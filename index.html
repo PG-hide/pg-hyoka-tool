@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>評価制度設計ツール | PureGrowth</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1a2744;
+    --accent: #2563eb;
+    --accent2: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --sidebar-w: 220px;
+  }
+  body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; font-size: 14px; }
+
+  /* Sidebar */
+  #sidebar {
+    width: var(--sidebar-w); background: var(--primary); color: #cbd5e1;
+    position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column; z-index: 100;
+  }
+  #sidebar .logo { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  #sidebar .logo .brand { font-size: 11px; color: #94a3b8; letter-spacing: .08em; text-transform: uppercase; }
+  #sidebar .logo h1 { font-size: 15px; color: #fff; font-weight: 700; margin-top: 4px; line-height: 1.3; }
+  #sidebar nav { flex: 1; padding: 12px 0; }
+  #sidebar nav .section-label { font-size: 10px; color: #64748b; letter-spacing: .1em; text-transform: uppercase; padding: 12px 16px 4px; }
+  #sidebar nav a {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+    color: #94a3b8; text-decoration: none; font-size: 13px; transition: all .15s;
+    border-left: 3px solid transparent; cursor: pointer;
+  }
+  #sidebar nav a:hover { color: #e2e8f0; background: rgba(255,255,255,.05); }
+  #sidebar nav a.active { color: #fff; background: rgba(37,99,235,.2); border-left-color: var(--accent); }
+  #sidebar nav a .icon { width: 18px; text-align: center; font-size: 14px; }
+  #sidebar .company-badge {
+    margin: 0 12px 16px; padding: 10px 12px; background: rgba(255,255,255,.07);
+    border-radius: 8px; font-size: 12px; color: #94a3b8;
+  }
+  #sidebar .company-badge .co-name { color: #e2e8f0; font-weight: 600; font-size: 13px; margin-top: 2px; }
+
+  /* Main */
+  #main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
+  .topbar {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 14px 32px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar h2 { font-size: 18px; font-weight: 700; }
+  .topbar .actions { display: flex; gap: 8px; }
+  .btn { padding: 7px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-success { background: var(--accent2); color: #fff; }
+  .btn-warn { background: var(--warn); color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { background: var(--danger); color: #fff; }
+
+  /* Content */
+  .content { padding: 28px 32px; max-width: 1100px; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .card-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .card-title .badge { font-size: 10px; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+
+  /* Form */
+  .form-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 14px; color: var(--text); outline: none; transition: border-color .15s;
+    background: #fff; font-family: inherit;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table th { background: var(--bg); font-weight: 600; color: var(--muted); padding: 8px 12px; text-align: left; border-bottom: 2px solid var(--border); }
+  table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table tr:hover td { background: #f8fafc; }
+  table input[type="number"], table input[type="text"] {
+    width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px;
+    font-size: 13px; font-family: inherit;
+  }
+  table input:focus { outline: none; border-color: var(--accent); }
+
+  /* Grade colors */
+  .g1 { color: #64748b; } .g2 { color: #0891b2; } .g3 { color: #059669; }
+  .g4 { color: #7c3aed; } .g5 { color: #dc2626; }
+  .grade-pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .gp1 { background: #f1f5f9; color: #475569; }
+  .gp2 { background: #e0f2fe; color: #0369a1; }
+  .gp3 { background: #d1fae5; color: #065f46; }
+  .gp4 { background: #ede9fe; color: #6d28d9; }
+  .gp5 { background: #fee2e2; color: #991b1b; }
+
+  /* Weight bar */
+  .weight-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; margin-top: 4px; }
+  .weight-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+
+  /* KPI selector */
+  .kpi-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .kpi-option {
+    border: 2px solid var(--border); border-radius: 10px; padding: 16px;
+    cursor: pointer; transition: all .2s;
+  }
+  .kpi-option:hover { border-color: var(--accent); }
+  .kpi-option.selected { border-color: var(--accent); background: #eff6ff; }
+  .kpi-option h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .kpi-option p { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .pros-cons { display: flex; gap: 12px; font-size: 12px; }
+  .pros { color: var(--accent2); } .cons { color: var(--danger); }
+
+  /* Ratio slider */
+  .ratio-control { display: flex; flex-direction: column; gap: 8px; }
+  .ratio-bar { height: 24px; border-radius: 6px; overflow: hidden; display: flex; cursor: pointer; user-select: none; }
+  .ratio-fixed { background: var(--accent); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; transition: width .3s; }
+  .ratio-var { background: var(--warn); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; transition: width .3s; flex: 1; }
+  .ratio-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+
+  /* Eval axes */
+  .axis-row { display: grid; grid-template-columns: 120px 1fr 80px; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .axis-row:last-child { border-bottom: none; }
+  .axis-label { font-weight: 700; font-size: 13px; }
+  .axis-sub { font-size: 11px; color: var(--muted); }
+  .weight-input { display: flex; align-items: center; gap: 8px; }
+  .weight-input input { width: 60px; text-align: center; }
+  .weight-total { padding: 8px 16px; background: var(--bg); border-radius: 6px; font-size: 13px; font-weight: 600; }
+  .weight-total.ok { color: var(--accent2); }
+  .weight-total.ng { color: var(--danger); }
+
+  /* Salary grid */
+  .salary-grid { overflow-x: auto; }
+  .salary-grid table th { text-align: center; }
+  .salary-grid table td { text-align: center; }
+  .salary-grid .grade-header { font-weight: 700; }
+
+  /* Timeline */
+  .timeline { display: flex; gap: 0; overflow-x: auto; padding-bottom: 8px; }
+  .month-block { flex: 1; min-width: 80px; text-align: center; }
+  .month-label { font-size: 11px; color: var(--muted); padding: 4px; background: var(--bg); border: 1px solid var(--border); }
+  .month-event { margin-top: 4px; padding: 4px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; min-height: 30px; display: flex; align-items: center; justify-content: center; }
+  .ev-goal { background: #dbeafe; color: #1d4ed8; }
+  .ev-mid { background: #d1fae5; color: #065f46; }
+  .ev-result { background: #fef3c7; color: #92400e; }
+  .ev-raise { background: #ede9fe; color: #5b21b6; }
+  .ev-bonus { background: #fee2e2; color: #991b1b; }
+  .ev-review { background: #f1f5f9; color: #475569; }
+
+  /* Simulation */
+  .sim-member-row td input { width: 100%; }
+  .sim-total { background: #f8fafc; font-weight: 700; }
+  .sim-result { padding: 16px; background: var(--bg); border-radius: 8px; margin-top: 16px; }
+  .sim-kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .sim-kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
+  .sim-kpi-card .val { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .sim-kpi-card .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* Roadmap */
+  .roadmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .phase-card { border-radius: 10px; overflow: hidden; }
+  .phase-header { padding: 12px 16px; font-weight: 700; font-size: 13px; color: #fff; }
+  .ph1 .phase-header { background: #0891b2; }
+  .ph2 .phase-header { background: #7c3aed; }
+  .ph3 .phase-header { background: #059669; }
+  .phase-body { padding: 16px; border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; }
+  .phase-item { display: flex; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+  .phase-item::before { content: "✓"; color: var(--accent2); font-weight: 700; flex-shrink: 0; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 0; }
+  .tab { padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-radius: 6px 6px 0 0; transition: all .15s; border: 1px solid transparent; border-bottom: none; }
+  .tab:hover { color: var(--text); background: var(--bg); }
+  .tab.active { color: var(--accent); background: var(--card); border-color: var(--border); border-bottom: 2px solid var(--card); margin-bottom: -2px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Item list */
+  .item-list { display: flex; flex-direction: column; gap: 6px; }
+  .item-row { display: flex; gap: 8px; align-items: center; }
+  .item-row input { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 13px; }
+  .item-row .btn-icon { background: none; border: none; cursor: pointer; color: var(--danger); font-size: 16px; padding: 4px; }
+  .add-item { display: flex; align-items: center; gap: 6px; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px 0; }
+  .add-item:hover { text-decoration: underline; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 9999; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
+  /* Print */
+  @media print {
+    #sidebar, .topbar, .actions, .btn, .add-item { display: none !important; }
+    #main { margin-left: 0; }
+    .content { padding: 0; }
+    .section { display: block !important; page-break-after: always; }
+  }
+
+  /* Misc */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .text-muted { color: var(--muted); font-size: 12px; }
+  .text-accent { color: var(--accent); font-weight: 600; }
+  .flex { display: flex; } .gap-8 { gap: 8px; } .gap-16 { gap: 16px; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .mb-16 { margin-bottom: 16px; }
+  .info-box { padding: 12px 16px; background: #eff6ff; border-left: 3px solid var(--accent); border-radius: 4px; font-size: 13px; color: #1e40af; margin-bottom: 16px; }
+  .warn-box { padding: 12px 16px; background: #fffbeb; border-left: 3px solid var(--warn); border-radius: 4px; font-size: 13px; color: #92400e; margin-bottom: 16px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .tag-blue { background: #dbeafe; color: #1d4ed8; }
+  .tag-green { background: #d1fae5; color: #065f46; }
+  .tag-purple { background: #ede9fe; color: #5b21b6; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <div class="logo">
+    <div class="brand">PureGrowth</div>
+    <h1>評価制度<br>設計ツール</h1>
+  </div>
+  <nav>
+    <div class="section-label">基本設定</div>
+    <a class="active" onclick="nav('info')" id="nav-info"><span class="icon">🏢</span>会社情報</a>
+    <div class="section-label">評価制度設計</div>
+    <a onclick="nav('kpi')" id="nav-kpi"><span class="icon">🎯</span>STEP 1: KPI設計</a>
+    <a onclick="nav('grade')" id="nav-grade"><span class="icon">🏆</span>STEP 2: 等級設計</a>
+    <a onclick="nav('axis')" id="nav-axis"><span class="icon">📊</span>STEP 3: 評価3軸</a>
+    <a onclick="nav('salary')" id="nav-salary"><span class="icon">💴</span>STEP 4: 賃金テーブル</a>
+    <a onclick="nav('incentive')" id="nav-incentive"><span class="icon">📈</span>STEP 5: インセンティブ</a>
+    <a onclick="nav('rules')" id="nav-rules"><span class="icon">⬆️</span>STEP 6: 昇降格ルール</a>
+    <a onclick="nav('process')" id="nav-process"><span class="icon">📅</span>STEP 7: 評価プロセス</a>
+    <div class="section-label">活用ツール</div>
+    <a onclick="nav('sim')" id="nav-sim"><span class="icon">🧮</span>給与シミュレーション</a>
+    <a onclick="nav('roadmap')" id="nav-roadmap"><span class="icon">🗺️</span>導入ロードマップ</a>
+    <a onclick="nav('feedback')" id="nav-feedback"><span class="icon">💬</span>面談設計</a>
+  </nav>
+  <div class="company-badge">
+    <div>対象会社</div>
+    <div class="co-name" id="sidebar-co">（未設定）</div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div id="main">
+  <div class="topbar">
+    <h2 id="topbar-title">会社情報</h2>
+    <div class="actions">
+      <button class="btn btn-ghost btn-sm" onclick="loadDemo()">デモデータ読込</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">💾 保存</button>
+      <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ 印刷</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- ===== SECTION: 会社情報 ===== -->
+    <div class="section active" id="sec-info">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏢 クライアント会社情報 <span class="badge">基本設定</span></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>会社名</label>
+            <input type="text" id="co_name" placeholder="○○建設株式会社" oninput="updateSidebar()">
+          </div>
+          <div class="form-group">
+            <label>業種</label>
+            <select id="co_type">
+              <option>工務店</option>
+              <option>ハウスビルダー</option>
+              <option>分譲住宅会社</option>
+              <option>リフォーム会社</option>
+              <option>不動産会社</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>従業員数</label>
+            <input type="number" id="co_emp" placeholder="20" min="1">
+          </div>
+          <div class="form-group">
+            <label>現在の年間棟数（実績）</label>
+            <input type="number" id="co_tsubo" placeholder="50" min="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>目標年間棟数</label>
+            <input type="number" id="co_target_tsubo" placeholder="100">
+          </div>
+          <div class="form-group">
+            <label>平均粗利単価（万円/棟）</label>
+            <input type="number" id="co_arari" placeholder="350">
+          </div>
+          <div class="form-group">
+            <label>評価制度導入時期</label>
+            <input type="month" id="co_start" value="2026-04">
+          </div>
+          <div class="form-group">
+            <label>評価サイクル</label>
+            <select id="co_cycle">
+              <option value="semi">半期（年2回）</option>
+              <option value="annual">年1回</option>
+              <option value="quarter">四半期</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>現状・課題メモ</label>
+            <textarea id="co_memo" placeholder="例：営業5名。評価制度なし。離職率が高い。採用で競合に負けている。"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📌 評価制度を作る目的</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <label style="display:flex;gap:8px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="pur1" checked> <span><b>採用力強化</b><br><small class="text-muted">競合比較優位の給与提示</small></span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="pur2" checked> <span><b>定着率向上</b><br><small class="text-muted">キャリアパスの見える化</small></span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="pur3"> <span><b>トップセールス確保</b><br><small class="text-muted">ブースト設計で引き止め</small></span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="pur4"> <span><b>全社展開</b><br><small class="text-muted">営業以外（工務・設計）にも</small></span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="pur5"> <span><b>会社ビジョン浸透</b><br><small class="text-muted">行動評価にビジョン連動</small></span>
+          </label>
+          <label style="display:flex;gap:8px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="pur6"> <span><b>マネジメント強化</b><br><small class="text-muted">評価者研修・面談設計</small></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: KPI設計 ===== -->
+    <div class="section" id="sec-kpi">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🎯 KPI指標の選択 <span class="badge">STEP 1</span></div>
+        </div>
+        <div class="info-box">棟数ベースか粗利ベースか、会社の戦略・成長フェーズに合わせて選択する。どちらが正解ではなく、社員が「何に集中すべきか」を決める意思決定。</div>
+        <div class="kpi-selector mb-16">
+          <div class="kpi-option selected" id="kpi-tsubo" onclick="selectKPI('tsubo')">
+            <h3>🏠 棟数ベース</h3>
+            <p>年間○棟を目標に。わかりやすく業界スタンダード。</p>
+            <div class="pros-cons">
+              <span class="pros">◎ シンプル・理解しやすい<br>◎ 業界標準で比較しやすい</span>
+              <span class="cons" style="margin-left:12px;">△ 粗利意識が低くなりがち<br>△ 数だけ追うリスク</span>
+            </div>
+          </div>
+          <div class="kpi-option" id="kpi-arari" onclick="selectKPI('arari')">
+            <h3>💰 粗利ベース</h3>
+            <p>粗利額・粗利率を目標に。トップ営業に強い設計。</p>
+            <div class="pros-cons">
+              <span class="pros">◎ 利益意識が高まる<br>◎ オプション提案のDNA付与</span>
+              <span class="cons" style="margin-left:12px;">△ 社員の計算が複雑<br>△ 上操作リスクあり</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>目標棟数/粗利（個人・半期）</label>
+            <input type="number" id="kpi_target" placeholder="25">
+          </div>
+          <div class="form-group">
+            <label>インセンティブ基準単価（万円/棟 or 万円）</label>
+            <input type="number" id="kpi_unit" placeholder="20">
+          </div>
+          <div class="form-group">
+            <label>カーブ係数（%）</label>
+            <input type="number" id="kpi_curve" placeholder="30" min="10" max="50">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚖️ 固定給 vs インセンティブ比率</div>
+        </div>
+        <div class="info-box">社員の生活安定と採用力のために固定を厚く。トップ引き止めにはインセンティブを効かせる。まず社保コスト含めた総人件費で計算すること。</div>
+        <div class="ratio-control">
+          <div class="ratio-labels">
+            <span>固定給: <b id="fixed-pct">65</b>%</span>
+            <span>インセンティブ: <b id="var-pct">35</b>%</span>
+          </div>
+          <input type="range" id="ratio-slider" min="50" max="80" value="65" oninput="updateRatio(this.value)" style="width:100%;accent-color:var(--accent);">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);">
+            <span>←インセンティブ型 (50/50)</span>
+            <span>バランス型 (65/35)</span>
+            <span>固定重視型 (80/20)→</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>スタッフ平均固定給（月額・万円）</label>
+            <input type="number" id="avg_fixed" placeholder="25" oninput="calcCurve()">
+          </div>
+          <div class="form-group">
+            <label>想定インセンティブ（月平均・万円）</label>
+            <input type="number" id="avg_var" placeholder="13" oninput="calcCurve()">
+          </div>
+          <div class="form-group">
+            <label>社保・法定福利費率（%）</label>
+            <input type="number" id="hokenfee" placeholder="15" value="15" oninput="calcCurve()">
+          </div>
+        </div>
+        <div id="curve-result" class="sim-result" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: 等級設計 ===== -->
+    <div class="section" id="sec-grade">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏆 等級（グレード）設計 <span class="badge">STEP A</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="addGrade()">+ 等級追加</button>
+        </div>
+        <div class="info-box">まずシンプルに3〜5等級で始める。「この等級になると何ができる人か」を言語化することが最重要。昇格が「背伸びして届く」水準に設定すること。</div>
+        <table id="grade-table">
+          <thead>
+            <tr>
+              <th>等級</th>
+              <th>名称</th>
+              <th>概念・期待役割</th>
+              <th>目安年数</th>
+              <th>年収下限（万円）</th>
+              <th>年収上限（万円）</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="grade-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: 評価3軸 ===== -->
+    <div class="section" id="sec-axis">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 評価3軸とウェイト設定 <span class="badge">STEP B</span></div>
+        </div>
+        <div class="info-box">業績(What)・行動(How)・スキル(Can)の3軸で設計。G1〜G2はスキル重視、G3以上は行動・業績の比重を上げる。ウェイト合計100%にすること。</div>
+        <div class="axis-row" style="border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:8px;">
+          <div style="font-weight:700;font-size:12px;color:var(--muted);">評価軸</div>
+          <div style="font-weight:700;font-size:12px;color:var(--muted);">説明・評価観点</div>
+          <div style="font-weight:700;font-size:12px;color:var(--muted);">ウェイト</div>
+        </div>
+        <div class="axis-row">
+          <div><div class="axis-label" style="color:#0891b2;">⭐ 業績評価</div><div class="axis-sub">What</div></div>
+          <div>
+            <div style="font-size:12px;margin-bottom:8px;color:var(--muted);">目標達成度、棟数・粗利などの数値結果</div>
+            <div class="weight-bar"><div class="weight-fill" id="bar-gyoseki" style="background:#0891b2;"></div></div>
+          </div>
+          <div class="weight-input"><input type="number" id="w-gyoseki" value="35" min="0" max="100" oninput="updateWeights()"><span>%</span></div>
+        </div>
+        <div class="axis-row">
+          <div><div class="axis-label" style="color:#7c3aed;">🔥 行動評価</div><div class="axis-sub">How</div></div>
+          <div>
+            <div style="font-size:12px;margin-bottom:8px;color:var(--muted);">業務の進め方・プロセス、チームへの貢献、ビジョン実践度</div>
+            <div class="weight-bar"><div class="weight-fill" id="bar-kodo" style="background:#7c3aed;"></div></div>
+          </div>
+          <div class="weight-input"><input type="number" id="w-kodo" value="40" min="0" max="100" oninput="updateWeights()"><span>%</span></div>
+        </div>
+        <div class="axis-row">
+          <div><div class="axis-label" style="color:#059669;">💡 スキル評価</div><div class="axis-sub">Can</div></div>
+          <div>
+            <div style="font-size:12px;margin-bottom:8px;color:var(--muted);">保有スキル・資格・専門知識、育成能力</div>
+            <div class="weight-bar"><div class="weight-fill" id="bar-skill" style="background:#059669;"></div></div>
+          </div>
+          <div class="weight-input"><input type="number" id="w-skill" value="25" min="0" max="100" oninput="updateWeights()"><span>%</span></div>
+        </div>
+        <div style="text-align:right;margin-top:12px;">
+          合計: <span id="weight-total" class="weight-total ok">100%</span>
+        </div>
+      </div>
+
+      <!-- 評価項目 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 評価項目の設定</div>
+        </div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('items','gyoseki',this)">業績評価</div>
+          <div class="tab" onclick="switchTab('items','kodo',this)">行動評価</div>
+          <div class="tab" onclick="switchTab('items','skill',this)">スキル評価</div>
+        </div>
+        <div class="tab-content active" id="items-gyoseki">
+          <div class="warn-box">業績評価項目は「棟数」「粗利」「契約率」など数値で測れるものを設定する。</div>
+          <div class="item-list" id="items-gyoseki-list"></div>
+          <div class="add-item" onclick="addItem('gyoseki')">＋ 項目を追加</div>
+        </div>
+        <div class="tab-content" id="items-kodo">
+          <div class="warn-box">行動評価項目はビジョン・マインド・プロセスを評価。5段階でルーブリック化すると納得度が上がる。</div>
+          <div class="item-list" id="items-kodo-list"></div>
+          <div class="add-item" onclick="addItem('kodo')">＋ 項目を追加</div>
+        </div>
+        <div class="tab-content" id="items-skill">
+          <div class="warn-box">スキル評価は資格・認定・研修受講状況などを客観基準で設定。等級基準と連動させること。</div>
+          <div class="item-list" id="items-skill-list"></div>
+          <div class="add-item" onclick="addItem('skill')">＋ 項目を追加</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: 賃金テーブル ===== -->
+    <div class="section" id="sec-salary">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💴 賃金テーブル（等級×号俸） <span class="badge">STEP C</span></div>
+          <button class="btn btn-primary btn-sm" onclick="genSalaryTable()">テーブル生成</button>
+        </div>
+        <div class="info-box">隣接等級との重複を20〜30%程度設ける（例：G2上限 ＞ G3下限）。賃金テーブルは採用ページ・面接でそのまま使える。</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>号俸数（列数）</label>
+            <select id="salary-steps">
+              <option value="5">5号俸</option>
+              <option value="7" selected>7号俸</option>
+              <option value="10">10号俸</option>
+            </select>
+          </div>
+        </div>
+        <div class="salary-grid" id="salary-grid-container">
+          <p class="text-muted">「テーブル生成」ボタンを押してください</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: インセンティブ ===== -->
+    <div class="section" id="sec-incentive">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 インセンティブ・賞与設計 <span class="badge">STEP 5</span></div>
+        </div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('inc','timing',this)">支払タイミング</div>
+          <div class="tab" onclick="switchTab('inc','boost',this)">ブースト設計</div>
+          <div class="tab" onclick="switchTab('inc','bonus',this)">賞与計算</div>
+        </div>
+
+        <div class="tab-content active" id="inc-timing">
+          <div class="info-box">賞与でまとめて払うよりも、都度インセンティブで払う方が動機付けが強い。ただし社保コストも変わるので設計注意。</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">支払方式</label>
+              <select id="inc_type" style="padding:8px;border:1px solid var(--border);border-radius:6px;width:100%;font-size:14px;" onchange="updateTimingUI()">
+                <option value="semi">年2回（夏・冬）</option>
+                <option value="split">分割払い（都度30%・中間30%・年末40%）</option>
+                <option value="monthly">月次インセンティブ</option>
+              </select>
+            </div>
+            <div id="timing-detail">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">月割り計算</label>
+              <div style="font-size:13px;color:var(--text);" id="timing-desc">月次インセンティブと賞与を組み合わせる場合は都度払い方式が動機付けに有効。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="inc-boost">
+          <div class="info-box">トップセールスを離さない「ブースト設計」。年3本超でインセンティブ単価UP。採用ページでも「12棟達成でボーナスUP」として活用できる。</div>
+          <table id="boost-table">
+            <thead>
+              <tr><th>ブーストレベル</th><th>達成条件（棟/半期）</th><th>インセンティブ倍率</th><th>通称</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="grade-pill gp1">BASE</span></td>
+                <td><input type="number" id="boost0_cond" value="0" style="width:80px;"> 棟以上</td>
+                <td><input type="number" id="boost0_rate" value="1.0" step="0.1" style="width:70px;"> ×</td>
+                <td><input type="text" id="boost0_name" value="標準" style="width:100px;"></td>
+              </tr>
+              <tr>
+                <td><span class="grade-pill gp2">Lv.1</span></td>
+                <td><input type="number" id="boost1_cond" value="7" style="width:80px;"> 棟以上</td>
+                <td><input type="number" id="boost1_rate" value="1.3" step="0.1" style="width:70px;"> ×</td>
+                <td><input type="text" id="boost1_name" value="ブースト Lv.1" style="width:100px;"></td>
+              </tr>
+              <tr>
+                <td><span class="grade-pill gp3">Lv.2</span></td>
+                <td><input type="number" id="boost2_cond" value="10" style="width:80px;"> 棟以上</td>
+                <td><input type="number" id="boost2_rate" value="1.6" step="0.1" style="width:70px;"> ×</td>
+                <td><input type="text" id="boost2_name" value="ブースト Lv.2" style="width:100px;"></td>
+              </tr>
+              <tr>
+                <td><span class="grade-pill gp5">TOP</span></td>
+                <td><input type="number" id="boost3_cond" value="12" style="width:80px;"> 棟以上</td>
+                <td><input type="number" id="boost3_rate" value="2.0" step="0.1" style="width:70px;"> ×</td>
+                <td><input type="text" id="boost3_name" value="トップボーナス" style="width:100px;"></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="info-box" style="margin-top:16px;">「12棟達成で特別ボーナス」は採用ページ・面接でのフックとして使える。ブースト条件は採用コンテンツに直結させること。</div>
+        </div>
+
+        <div class="tab-content" id="inc-bonus">
+          <div class="info-box">賞与総額 = カーブ係数 × 報酬 − 控除額。カーブ係数は業績・在籍・評価に連動させる。まずシンプルな計算式から始める。</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>賞与月数（基本）</label>
+              <input type="number" id="bonus_months" value="2.5" step="0.5" min="0">
+            </div>
+            <div class="form-group">
+              <label>評価係数（S評価）</label>
+              <input type="number" id="bonus_s" value="1.3" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>評価係数（A評価）</label>
+              <input type="number" id="bonus_a" value="1.1" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>評価係数（B評価）</label>
+              <input type="number" id="bonus_b" value="1.0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>評価係数（C評価）</label>
+              <input type="number" id="bonus_c" value="0.8" step="0.1">
+            </div>
+            <div class="form-group">
+              <label>評価係数（D評価）</label>
+              <input type="number" id="bonus_d" value="0.5" step="0.1">
+            </div>
+          </div>
+          <div style="background:var(--bg);padding:16px;border-radius:8px;font-size:13px;">
+            <b>計算式：</b> 賞与 = 固定給 × <span id="bonus_months_disp">2.5</span>ヶ月 × 評価係数 × 会社業績係数
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: 昇降格ルール ===== -->
+    <div class="section" id="sec-rules">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⬆️ 昇格・降格ルール <span class="badge">STEP D</span></div>
+        </div>
+        <div class="info-box">「頑張れば上がれる」「サボれば下がる」が社員に見えること。昇格は「3条件を全て満たす」、降格は「警告 → 実施」の2ステップを原則とする。</div>
+
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">昇給（号俸アップ）ルール</h3>
+        <table>
+          <thead>
+            <tr><th>評価ランク</th><th>号俸アップ数</th><th>月額換算（万円）</th><th>備考</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="grade-pill" style="background:#fef3c7;color:#92400e;">S評価</span></td>
+              <td><input type="number" id="raise_s" value="3" style="width:60px;"> 号俸</td>
+              <td><input type="number" id="raise_s_amt" value="15000" style="width:80px;"> 円</td>
+              <td><input type="text" id="raise_s_note" value="トップ水準・特別昇給" style="width:180px;"></td>
+            </tr>
+            <tr>
+              <td><span class="grade-pill" style="background:#d1fae5;color:#065f46;">A評価</span></td>
+              <td><input type="number" id="raise_a" value="2" style="width:60px;"> 号俸</td>
+              <td><input type="number" id="raise_a_amt" value="10000" style="width:80px;"> 円</td>
+              <td><input type="text" id="raise_a_note" value="期待以上の活躍" style="width:180px;"></td>
+            </tr>
+            <tr>
+              <td><span class="grade-pill" style="background:#dbeafe;color:#1d4ed8;">B評価</span></td>
+              <td><input type="number" id="raise_b" value="1" style="width:60px;"> 号俸</td>
+              <td><input type="number" id="raise_b_amt" value="5000" style="width:80px;"> 円</td>
+              <td><input type="text" id="raise_b_note" value="標準的な活躍" style="width:180px;"></td>
+            </tr>
+            <tr>
+              <td><span class="grade-pill" style="background:#f1f5f9;color:#475569;">C評価</span></td>
+              <td><input type="number" id="raise_c" value="0" style="width:60px;"> 号俸</td>
+              <td><input type="number" id="raise_c_amt" value="0" style="width:80px;"> 円</td>
+              <td><input type="text" id="raise_c_note" value="昇給なし" style="width:180px;"></td>
+            </tr>
+            <tr>
+              <td><span class="grade-pill" style="background:#fee2e2;color:#991b1b;">D評価</span></td>
+              <td><input type="number" id="raise_d" value="-1" style="width:60px;"> 号俸</td>
+              <td><input type="number" id="raise_d_amt" value="-5000" style="width:80px;"> 円</td>
+              <td><input type="text" id="raise_d_note" value="降給予告（翌期継続でD→降格警告）" style="width:180px;"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="divider"></div>
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">昇格（等級アップ）要件</h3>
+        <div class="warn-box">3条件を全て満たした場合のみ昇格。「上が詰まっているから昇格できない」設計は厳禁。</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div style="padding:16px;border:1px solid var(--border);border-radius:8px;">
+            <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">条件①：在籍年数</div>
+            <div class="form-group">
+              <label>最短在籍年数（年）</label>
+              <input type="number" id="promo_years" value="2" min="1">
+            </div>
+          </div>
+          <div style="padding:16px;border:1px solid var(--border);border-radius:8px;">
+            <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">条件②：評価実績</div>
+            <div class="form-group">
+              <label>直近 N 期以上がA評価以上</label>
+              <input type="number" id="promo_eval" value="2" min="1">
+            </div>
+          </div>
+          <div style="padding:16px;border:1px solid var(--border);border-radius:8px;">
+            <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">条件③：承認プロセス</div>
+            <div class="form-group">
+              <label>必要承認者</label>
+              <select id="promo_approver">
+                <option>経営者のみ</option>
+                <option>上長 + 経営者</option>
+                <option>人事委員会</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: 評価プロセス ===== -->
+    <div class="section" id="sec-process">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📅 年間評価サイクル <span class="badge">STEP E</span></div>
+        </div>
+        <div class="info-box">評価は「通知」で終わらせない。目標設定→中間面談→実績面談→フィードバックの4ステップが機能して初めて評価制度が機能する。</div>
+        <div id="timeline-container"></div>
+        <div class="divider"></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>評価期間開始月（上半期）</label>
+            <select id="cycle_start1">
+              <option value="4" selected>4月</option>
+              <option value="10">10月</option>
+              <option value="1">1月</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>評価期間開始月（下半期）</label>
+            <select id="cycle_start2">
+              <option value="10" selected>10月</option>
+              <option value="4">4月</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>賞与支給月</label>
+            <select id="bonus_month">
+              <option value="6,12" selected>6月・12月</option>
+              <option value="7,1">7月・1月</option>
+              <option value="12">12月のみ</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="renderTimeline()">サイクル更新</button>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: シミュレーション ===== -->
+    <div class="section" id="sec-sim">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧮 給与シミュレーション</div>
+        </div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('sim','members',this)">メンバー別年収試算</div>
+          <div class="tab" onclick="switchTab('sim','raise',this)">賃上げ原資シミュレーション</div>
+        </div>
+
+        <!-- メンバー別 -->
+        <div class="tab-content active" id="sim-members">
+          <div class="info-box">メンバーごとに等級・評価・実績棟数を入力して年収・人件費を試算。カーブ係数（社保込み30〜40%が目安）を確認すること。</div>
+          <div style="text-align:right;margin-bottom:8px;"><button class="btn btn-ghost btn-sm" onclick="addMember()">+ メンバー追加</button></div>
+          <table>
+            <thead>
+              <tr><th>氏名</th><th>等級</th><th>固定給（万/月）</th><th>実績（棟/半期）</th><th>評価</th><th>年収試算（万円）</th><th>社保込（万円）</th><th></th></tr>
+            </thead>
+            <tbody id="sim-tbody"></tbody>
+            <tfoot>
+              <tr class="sim-total">
+                <td colspan="5" style="text-align:right;font-size:13px;">合計</td>
+                <td id="sim-total-salary">-</td>
+                <td id="sim-total-cost">-</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+          <div id="sim-kpi-area" class="sim-result"></div>
+        </div>
+
+        <!-- 賃上げシミュレーション -->
+        <div class="tab-content" id="sim-raise">
+          <div class="info-box">棟数目標から経常利益→賃上げ原資→評価ランク別昇給額を逆算。スライダーで賃上げ配分率を変更して全表が自動更新。</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>棟粗利（1棟あたり・万円）</label>
+              <input type="number" id="raise_arari" value="400" oninput="calcRaise()">
+            </div>
+            <div class="form-group">
+              <label>来期目標棟数（棟）</label>
+              <input type="number" id="raise_target" value="12" oninput="calcRaise()">
+            </div>
+            <div class="form-group">
+              <label>来期経常利益目標（万円）</label>
+              <input type="number" id="raise_profit" value="2000" oninput="calcRaise()">
+            </div>
+            <div class="form-group">
+              <label>賃上げ配分率（%）</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="range" id="raise_rate_slider" min="5" max="50" value="10" oninput="document.getElementById('raise_rate').value=this.value;calcRaise();" style="flex:1;accent-color:var(--accent);">
+                <input type="number" id="raise_rate" value="10" style="width:60px;" oninput="document.getElementById('raise_rate_slider').value=this.value;calcRaise();">
+                <span>%</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>対象社員数（名）</label>
+              <input type="number" id="raise_emp" value="17" oninput="calcRaise()">
+            </div>
+          </div>
+          <div id="raise-result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: ロードマップ ===== -->
+    <div class="section" id="sec-roadmap">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🗺️ 導入ロードマップ</div>
+        </div>
+        <div class="info-box">一度に全社展開しようとすると失敗する。段階的に。まず営業から始めて、実績を作ってから他部門に展開する。</div>
+        <div class="roadmap">
+          <div class="phase-card ph1">
+            <div class="phase-header">PHASE 1：1〜3ヶ月<br><small style="font-weight:400;font-size:11px;">営業KPI・インセンティブ確立</small></div>
+            <div class="phase-body">
+              <div class="phase-item">KPI指標（棟数/粗利）の決定</div>
+              <div class="phase-item">固定vs変動比率の設計</div>
+              <div class="phase-item">インセンティブ支払タイミング決定</div>
+              <div class="phase-item">ブースト設計（トップセールス対策）</div>
+              <div class="phase-item">給与シミュレーション検証</div>
+              <div class="phase-item">給与ベンチマーク（競合3〜5社）</div>
+            </div>
+          </div>
+          <div class="phase-card ph2">
+            <div class="phase-header">PHASE 2：3〜6ヶ月<br><small style="font-weight:400;font-size:11px;">等級・評価制度の骨格構築</small></div>
+            <div class="phase-body">
+              <div class="phase-item">等級設計（G1〜G5）</div>
+              <div class="phase-item">評価3軸・項目設計</div>
+              <div class="phase-item">賃金テーブル作成</div>
+              <div class="phase-item">昇降格ルール明文化</div>
+              <div class="phase-item">評価プロセス・カレンダー設計</div>
+              <div class="phase-item">評価者（上長）への研修実施</div>
+            </div>
+          </div>
+          <div class="phase-card ph3">
+            <div class="phase-header">PHASE 3：6〜12ヶ月<br><small style="font-weight:400;font-size:11px;">全社展開・改善サイクル</small></div>
+            <div class="phase-body">
+              <div class="phase-item">工務・設計・管理への評価展開</div>
+              <div class="phase-item">評価サイクル1周目の実施・振り返り</div>
+              <div class="phase-item">給与ベンチマーク更新・見直し</div>
+              <div class="phase-item">採用ページへの給与体系掲載</div>
+              <div class="phase-item">フィードバック面談の定着化</div>
+              <div class="phase-item">翌年度へのPDCA（年次更新）</div>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="form-group">
+          <label>支援開始予定</label>
+          <input type="month" id="rm_start" value="2026-05">
+        </div>
+        <div id="rm-schedule" style="margin-top:16px;"></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="renderRoadmap()">スケジュール生成</button>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: 面談設計 ===== -->
+    <div class="section" id="sec-feedback">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💬 フィードバック面談設計 <span class="badge">STEP F</span></div>
+        </div>
+        <div class="info-box">評価は「通知」で終わらせない。面談で「なぜその評価か」「何をすれば上がれるか」を伝え、来期目標を本人から引き出すことが最重要。</div>
+
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">面談の4ステップ</h3>
+        <div style="display:grid;gap:12px;">
+          <div style="padding:16px;border:1px solid var(--border);border-radius:8px;display:grid;grid-template-columns:80px 1fr;gap:16px;align-items:start;">
+            <div style="text-align:center;padding:10px;background:#dbeafe;border-radius:8px;font-size:20px;">📋</div>
+            <div>
+              <div style="font-weight:700;margin-bottom:4px;">STEP 1：事前準備（面談前）</div>
+              <ul style="font-size:12px;color:var(--muted);padding-left:16px;line-height:1.8;">
+                <li>評価シートの確認・改善点の整理</li>
+                <li>具体的なエピソードを3つ以上準備</li>
+                <li>来期目標の叩き台を用意</li>
+                <li>本人の自己評価シートを事前に回収</li>
+              </ul>
+            </div>
+          </div>
+          <div style="padding:16px;border:1px solid var(--border);border-radius:8px;display:grid;grid-template-columns:80px 1fr;gap:16px;align-items:start;">
+            <div style="text-align:center;padding:10px;background:#d1fae5;border-radius:8px;font-size:20px;">💬</div>
+            <div>
+              <div style="font-weight:700;margin-bottom:4px;">STEP 2：良かった点を伝える（冒頭5分）</div>
+              <ul style="font-size:12px;color:var(--muted);padding-left:16px;line-height:1.8;">
+                <li>具体的エピソードで伝える（抽象NG）</li>
+                <li>「あの時のあれが良かった」と特定する</li>
+                <li>会社への貢献を認める</li>
+              </ul>
+            </div>
+          </div>
+          <div style="padding:16px;border:1px solid var(--border);border-radius:8px;display:grid;grid-template-columns:80px 1fr;gap:16px;align-items:start;">
+            <div style="text-align:center;padding:10px;background:#fef3c7;border-radius:8px;font-size:20px;">🔧</div>
+            <div>
+              <div style="font-weight:700;margin-bottom:4px;">STEP 3：改善点を伝える（「どうしたら改善されるか」で話す）</div>
+              <ul style="font-size:12px;color:var(--muted);padding-left:16px;line-height:1.8;">
+                <li>「ここがダメ」ではなく「こうすると良くなる」</li>
+                <li>1〜2点に絞る（詰め込みNG）</li>
+                <li>本人の意見を先に聞く</li>
+              </ul>
+            </div>
+          </div>
+          <div style="padding:16px;border:1px solid var(--border);border-radius:8px;display:grid;grid-template-columns:80px 1fr;gap:16px;align-items:start;">
+            <div style="text-align:center;padding:10px;background:#ede9fe;border-radius:8px;font-size:20px;">🎯</div>
+            <div>
+              <div style="font-weight:700;margin-bottom:4px;">STEP 4：来期目標を本人から引き出す</div>
+              <ul style="font-size:12px;color:var(--muted);padding-left:16px;line-height:1.8;">
+                <li>S.M.A.R.T基準で目標設定（数値・期限）</li>
+                <li>「何を達成したら評価が上がるか」を明示</li>
+                <li>目標は本人に書かせる（押し付けNG）</li>
+                <li>面談シートに残して次回に繋げる</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">面談設定</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>面談時間（分）</label>
+            <input type="number" id="fb_time" value="45" min="15" max="120">
+          </div>
+          <div class="form-group">
+            <label>実施頻度</label>
+            <select id="fb_freq">
+              <option value="semi">半期2回（評価時）</option>
+              <option value="quarter">四半期4回</option>
+              <option value="monthly">月1回</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>評価者研修</label>
+            <select id="fb_train">
+              <option value="yes">実施する（推奨）</option>
+              <option value="no">実施しない</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div id="toast"></div>
+
+<script>
+// ===== STATE =====
+let state = {
+  coName: '', coType: '工務店', coEmp: 20, coTsubo: 50, coTarget: 100, coArari: 350,
+  kpiType: 'tsubo',
+  fixedRatio: 65,
+  grades: [
+    { id:'G1', name:'スタッフ', concept:'指示のもとで業務を行う。住宅業務の基礎を習得中。', years:'〜3年', min:260, max:380 },
+    { id:'G2', name:'シニアスタッフ', concept:'自律的に業務を行い、後輩へのサポートができる。', years:'3〜6年', min:360, max:500 },
+    { id:'G3', name:'リーダー', concept:'チームをまとめ成果を出す。プロジェクト推進役。', years:'6〜10年', min:460, max:640 },
+    { id:'G4', name:'マネージャー', concept:'部門を束ね、採用・育成・業績管理を担う。', years:'10年〜', min:580, max:800 },
+    { id:'G5', name:'幹部', concept:'経営に近い意思決定と組織設計を担う。', years:'別途', min:720, max:1000 },
+  ],
+  items: {
+    gyoseki: ['棟数・粗利の目標達成度', '契約率（商談→契約転換率）', '着工棟数の管理', '粗利率の管理'],
+    kodo: ['会社ビジョン・方針の実践', '報告・連絡・相談の徹底', 'チームワーク・協調性', 'お客様対応・クオリティ', '自己成長への取り組み'],
+    skill: ['住宅商品知識・提案力', '資金計画・ローン知識', '資格・認定取得（FP等）', 'デジタルツール活用力'],
+  }
+};
+
+// ===== INIT =====
+function init() {
+  const saved = localStorage.getItem('hyoka_state');
+  if (saved) { try { state = {...state, ...JSON.parse(saved)}; } catch(e){} }
+  renderGrades();
+  renderItems();
+  renderTimeline();
+  renderSimTable();
+  updateWeights();
+  updateRatio(state.fixedRatio);
+  syncForm();
+}
+
+function syncForm() {
+  if (state.coName) { document.getElementById('co_name').value = state.coName; updateSidebar(); }
+}
+
+function save() {
+  state.coName = document.getElementById('co_name').value;
+  state.coType = document.getElementById('co_type').value;
+  state.coEmp = +document.getElementById('co_emp').value || 0;
+  state.coTsubo = +document.getElementById('co_tsubo').value || 0;
+  state.coTarget = +document.getElementById('co_target_tsubo').value || 0;
+  state.coArari = +document.getElementById('co_arari').value || 0;
+  localStorage.setItem('hyoka_state', JSON.stringify(state));
+  showToast('保存しました');
+}
+
+function exportData() {
+  save();
+  showToast('データを保存しました');
+}
+
+function updateSidebar() {
+  const name = document.getElementById('co_name').value || '（未設定）';
+  document.getElementById('sidebar-co').textContent = name;
+}
+
+// ===== NAVIGATION =====
+const navTitles = {
+  info:'会社情報', kpi:'STEP 1: KPI設計', grade:'STEP 2: 等級設計',
+  axis:'STEP 3: 評価3軸', salary:'STEP 4: 賃金テーブル', incentive:'STEP 5: インセンティブ設計',
+  rules:'STEP 6: 昇降格ルール', process:'STEP 7: 評価プロセス',
+  sim:'給与シミュレーション', roadmap:'導入ロードマップ', feedback:'面談設計'
+};
+function nav(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  document.getElementById('topbar-title').textContent = navTitles[id] || id;
+}
+
+// ===== KPI =====
+function selectKPI(type) {
+  state.kpiType = type;
+  document.getElementById('kpi-tsubo').classList.toggle('selected', type === 'tsubo');
+  document.getElementById('kpi-arari').classList.toggle('selected', type === 'arari');
+}
+
+// ===== RATIO =====
+function updateRatio(val) {
+  state.fixedRatio = +val;
+  document.getElementById('fixed-pct').textContent = val;
+  document.getElementById('var-pct').textContent = 100 - val;
+  document.getElementById('ratio-slider').value = val;
+  calcCurve();
+}
+
+function calcCurve() {
+  const fixed = +(document.getElementById('avg_fixed').value) || 0;
+  const incent = +(document.getElementById('avg_var').value) || 0;
+  const hoken = +(document.getElementById('hokenfee').value || 15) / 100;
+  if (!fixed) return;
+  const annual = (fixed + incent) * 12;
+  const withHoken = annual * (1 + hoken);
+  const curve = fixed > 0 ? Math.round(incent / fixed * 1000) / 10 : 0;
+  const el = document.getElementById('curve-result');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="sim-kpi">
+      <div class="sim-kpi-card"><div class="val">${annual.toFixed(0)}<small style="font-size:13px;">万円</small></div><div class="lbl">想定年収</div></div>
+      <div class="sim-kpi-card"><div class="val">${withHoken.toFixed(0)}<small style="font-size:13px;">万円</small></div><div class="lbl">社保込み人件費</div></div>
+      <div class="sim-kpi-card"><div class="val" style="color:${curve>40?'var(--danger)':curve>30?'var(--warn)':'var(--accent2)'};">${curve}<small style="font-size:13px;">%</small></div><div class="lbl">変動/固定比率（目安30〜40%）</div></div>
+    </div>`;
+}
+
+// ===== GRADES =====
+function renderGrades() {
+  const tbody = document.getElementById('grade-tbody');
+  tbody.innerHTML = '';
+  state.grades.forEach((g, i) => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><span class="grade-pill gp${i+1}">${g.id}</span></td>
+      <td><input type="text" value="${g.name}" onchange="state.grades[${i}].name=this.value" style="width:120px;"></td>
+      <td><input type="text" value="${g.concept}" onchange="state.grades[${i}].concept=this.value" style="width:280px;"></td>
+      <td><input type="text" value="${g.years}" onchange="state.grades[${i}].years=this.value" style="width:80px;"></td>
+      <td><input type="number" value="${g.min}" onchange="state.grades[${i}].min=+this.value" style="width:80px;"></td>
+      <td><input type="number" value="${g.max}" onchange="state.grades[${i}].max=+this.value" style="width:80px;"></td>
+      <td>${state.grades.length > 2 ? `<button class="btn-icon btn-danger" onclick="removeGrade(${i})" title="削除">✕</button>` : ''}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+function addGrade() {
+  const n = state.grades.length + 1;
+  state.grades.push({ id:`G${n}`, name:`等級${n}`, concept:'', years:'', min:0, max:0 });
+  renderGrades();
+}
+
+function removeGrade(i) {
+  state.grades.splice(i, 1);
+  renderGrades();
+}
+
+// ===== WEIGHTS =====
+function updateWeights() {
+  const g = +(document.getElementById('w-gyoseki').value) || 0;
+  const k = +(document.getElementById('w-kodo').value) || 0;
+  const s = +(document.getElementById('w-skill').value) || 0;
+  const total = g + k + s;
+  document.getElementById('bar-gyoseki').style.width = g + '%';
+  document.getElementById('bar-kodo').style.width = k + '%';
+  document.getElementById('bar-skill').style.width = s + '%';
+  const el = document.getElementById('weight-total');
+  el.textContent = total + '%';
+  el.className = 'weight-total ' + (total === 100 ? 'ok' : 'ng');
+}
+
+// ===== ITEMS =====
+const defaultItems = {
+  gyoseki: ['棟数・粗利の目標達成度', '契約率（商談→契約転換率）', '着工棟数・品質管理', '粗利率・オプション提案'],
+  kodo: ['会社ビジョン・方針の実践', '報連相の徹底', 'チームワーク・協調性', '顧客対応クオリティ', '自己成長・勉強への姿勢'],
+  skill: ['住宅商品知識・提案力', '資金計画・ローン知識', '資格・認定（FP・宅建等）', 'デジタルツール活用']
+};
+
+function renderItems() {
+  ['gyoseki','kodo','skill'].forEach(type => {
+    const list = document.getElementById(`items-${type}-list`);
+    const items = state.items[type] || defaultItems[type];
+    state.items[type] = items;
+    list.innerHTML = '';
+    items.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = 'item-row';
+      div.innerHTML = `<input type="text" value="${item}" onchange="state.items['${type}'][${i}]=this.value">
+        <button class="btn-icon" onclick="removeItem('${type}',${i})">✕</button>`;
+      list.appendChild(div);
+    });
+  });
+}
+
+function addItem(type) {
+  state.items[type] = state.items[type] || [];
+  state.items[type].push('（新しい評価項目）');
+  renderItems();
+}
+
+function removeItem(type, i) {
+  state.items[type].splice(i, 1);
+  renderItems();
+}
+
+// ===== TABS =====
+function switchTab(group, id, el) {
+  document.querySelectorAll(`#inc-timing,#inc-boost,#inc-bonus`).forEach(t => t.classList.remove('active'));
+  document.querySelectorAll(`#items-gyoseki,#items-kodo,#items-skill`).forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`${group}-${id}`).classList.add('active');
+  el.classList.add('active');
+}
+
+// ===== SALARY TABLE =====
+function genSalaryTable() {
+  const steps = +(document.getElementById('salary-steps').value) || 7;
+  const container = document.getElementById('salary-grid-container');
+  if (state.grades.length === 0) { container.innerHTML = '<p class="text-muted">等級を設定してください</p>'; return; }
+  let html = '<table><thead><tr><th>等級</th><th>名称</th>';
+  for (let s = 1; s <= steps; s++) html += `<th>${s}号俸</th>`;
+  html += '</tr></thead><tbody>';
+  state.grades.forEach((g, i) => {
+    const range = g.max - g.min;
+    const step = steps > 1 ? range / (steps - 1) : 0;
+    html += `<tr><td class="grade-header"><span class="grade-pill gp${i+1}">${g.id}</span></td><td>${g.name}</td>`;
+    for (let s = 0; s < steps; s++) {
+      const monthlyMin = Math.round(g.min * 10000 / 12);
+      const monthly = Math.round((g.min * 10000 / 12) + (step * 10000 / 12 * s));
+      html += `<td style="text-align:center;font-size:12px;"><input type="number" value="${Math.round(monthly/1000)*1000}" style="width:80px;text-align:center;font-size:11px;padding:3px 4px;"></td>`;
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ===== TIMELINE =====
+function renderTimeline() {
+  const container = document.getElementById('timeline-container');
+  const events = {
+    1: {label:'1月', ev:'進捗確認', cls:'ev-review'},
+    2: {label:'2月', ev:'評価ランク確定', cls:'ev-result'},
+    3: {label:'3月', ev:'昇給通知', cls:'ev-raise'},
+    4: {label:'4月', ev:'上期目標設定', cls:'ev-goal'},
+    5: {label:'5月', ev:'', cls:''},
+    6: {label:'6月', ev:'賞与支給(夏)', cls:'ev-bonus'},
+    7: {label:'7月', ev:'中間面談', cls:'ev-mid'},
+    8: {label:'8月', ev:'', cls:''},
+    9: {label:'9月', ev:'', cls:''},
+    10: {label:'10月', ev:'下期目標設定', cls:'ev-goal'},
+    11: {label:'11月', ev:'実績確認', cls:'ev-review'},
+    12: {label:'12月', ev:'賞与支給(冬)', cls:'ev-bonus'},
+  };
+  let html = '<div class="timeline">';
+  for (let m = 1; m <= 12; m++) {
+    const ev = events[m];
+    html += `<div class="month-block">
+      <div class="month-label">${ev.label}</div>
+      <div class="month-event ${ev.cls}">${ev.ev}</div>
+    </div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ===== SIMULATION =====
+let members = [
+  { name:'田中 太郎', grade:'G3', fixed:25, tsubo:9, eval:'A' },
+  { name:'佐藤 花子', grade:'G2', fixed:22, tsubo:6, eval:'B' },
+  { name:'山田 一郎', grade:'G4', fixed:32, tsubo:5, eval:'A' },
+];
+
+function renderSimTable() {
+  const tbody = document.getElementById('sim-tbody');
+  tbody.innerHTML = '';
+  let totalSalary = 0, totalCost = 0;
+  members.forEach((m, i) => {
+    const inc = calcIncentive(m.tsubo, m.fixed);
+    const annual = Math.round((m.fixed + inc) * 12);
+    const cost = Math.round(annual * 1.15);
+    totalSalary += annual;
+    totalCost += cost;
+    const row = document.createElement('tr');
+    row.className = 'sim-member-row';
+    row.innerHTML = `
+      <td><input type="text" value="${m.name}" onchange="members[${i}].name=this.value"></td>
+      <td>
+        <select onchange="members[${i}].grade=this.value;recalcSim()">
+          ${state.grades.map(g => `<option value="${g.id}" ${g.id===m.grade?'selected':''}>${g.id} ${g.name}</option>`).join('')}
+        </select>
+      </td>
+      <td><input type="number" value="${m.fixed}" style="width:70px;" onchange="members[${i}].fixed=+this.value;recalcSim()"></td>
+      <td><input type="number" value="${m.tsubo}" style="width:60px;" onchange="members[${i}].tsubo=+this.value;recalcSim()"></td>
+      <td>
+        <select onchange="members[${i}].eval=this.value;recalcSim()">
+          ${['S','A','B','C','D'].map(e=>`<option value="${e}" ${e===m.eval?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:right;font-weight:600;">${annual}万円</td>
+      <td style="text-align:right;color:var(--muted);">${cost}万円</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeMember(${i})">削除</button></td>`;
+    tbody.appendChild(row);
+  });
+  document.getElementById('sim-total-salary').textContent = totalSalary + '万円';
+  document.getElementById('sim-total-cost').textContent = totalCost + '万円';
+  updateSimKPI(totalSalary, totalCost);
+}
+
+function calcIncentive(tsubo, fixed) {
+  const unit = +(document.getElementById('kpi_unit')?.value || 20);
+  const curve = +(document.getElementById('kpi_curve')?.value || 30) / 100;
+  return Math.round(tsubo * unit * curve / 12 * 10) / 10;
+}
+
+function recalcSim() { renderSimTable(); }
+
+function addMember() {
+  members.push({ name:'新規メンバー', grade: state.grades[0]?.id || 'G1', fixed:20, tsubo:0, eval:'B' });
+  renderSimTable();
+}
+
+function removeMember(i) {
+  members.splice(i, 1);
+  renderSimTable();
+}
+
+function updateSimKPI(salary, cost) {
+  const tsubo = +(document.getElementById('co_tsubo')?.value || state.coTsubo || 50);
+  const arari = +(document.getElementById('co_arari')?.value || state.coArari || 350);
+  const grossProfit = tsubo * arari;
+  const laborRatio = grossProfit > 0 ? Math.round(cost / grossProfit * 1000) / 10 : 0;
+  const el = document.getElementById('sim-kpi-area');
+  el.innerHTML = `<div style="font-weight:700;margin-bottom:12px;">📊 シミュレーション結果</div>
+    <div class="sim-kpi">
+      <div class="sim-kpi-card"><div class="val">${salary}万円</div><div class="lbl">年間人件費合計</div></div>
+      <div class="sim-kpi-card"><div class="val">${cost}万円</div><div class="lbl">社保込み総人件費</div></div>
+      <div class="sim-kpi-card">
+        <div class="val" style="color:${laborRatio>40?'var(--danger)':laborRatio>35?'var(--warn)':'var(--accent2)'};">${laborRatio}%</div>
+        <div class="lbl">人件費率（粗利対比 目安30〜40%）</div>
+      </div>
+    </div>`;
+}
+
+// ===== ROADMAP =====
+function renderRoadmap() {
+  const start = document.getElementById('rm_start').value;
+  if (!start) return;
+  const [y, m] = start.split('-').map(Number);
+  const addMonths = (months) => {
+    const d = new Date(y, m - 1 + months, 1);
+    return `${d.getFullYear()}年${d.getMonth()+1}月`;
+  };
+  document.getElementById('rm-schedule').innerHTML = `
+    <div style="display:grid;gap:8px;font-size:13px;">
+      <div style="display:flex;gap:12px;align-items:center;padding:8px;background:#e0f2fe;border-radius:6px;">
+        <span class="tag tag-blue">PHASE 1</span>
+        <span>${addMonths(0)} 〜 ${addMonths(3)}</span>
+        <span style="color:var(--muted);">KPI・インセンティブ・ブースト設計</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;padding:8px;background:#ede9fe;border-radius:6px;">
+        <span class="tag tag-purple">PHASE 2</span>
+        <span>${addMonths(3)} 〜 ${addMonths(6)}</span>
+        <span style="color:var(--muted);">等級・評価制度骨格構築</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;padding:8px;background:#d1fae5;border-radius:6px;">
+        <span class="tag tag-green">PHASE 3</span>
+        <span>${addMonths(6)} 〜 ${addMonths(12)}</span>
+        <span style="color:var(--muted);">全社展開・改善サイクル確立</span>
+      </div>
+    </div>`;
+}
+
+// ===== DEMO =====
+function loadDemo() {
+  document.getElementById('co_name').value = '株式会社サンプルホーム';
+  document.getElementById('co_type').value = '工務店';
+  document.getElementById('co_emp').value = 18;
+  document.getElementById('co_tsubo').value = 45;
+  document.getElementById('co_target_tsubo').value = 80;
+  document.getElementById('co_arari').value = 380;
+  document.getElementById('avg_fixed').value = 25;
+  document.getElementById('avg_var').value = 12;
+  document.getElementById('kpi_unit').value = 20;
+  document.getElementById('kpi_curve').value = 35;
+  updateSidebar();
+  calcCurve();
+  renderSimTable();
+  showToast('デモデータを読み込みました');
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== BONUS DISPLAY =====
+document.getElementById('bonus_months').addEventListener('input', function() {
+  document.getElementById('bonus_months_disp').textContent = this.value;
+});
+
+// ===== TAB SWITCH (fix for sim tabs) =====
+const _origSwitchTab = switchTab;
+window.switchTab = function(group, id, el) {
+  const prefixes = {
+    inc: ['inc-timing','inc-boost','inc-bonus'],
+    items: ['items-gyoseki','items-kodo','items-skill'],
+    sim: ['sim-members','sim-raise'],
+  };
+  const targets = prefixes[group];
+  if (targets) {
+    targets.forEach(t => document.getElementById(t)?.classList.remove('active'));
+    document.getElementById(`${group === 'sim' ? '' : group + '-'}${id}`)?.classList.remove('active');
+    // find parent tabs and deactivate
+    el.closest('.card')?.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    const targetEl = document.getElementById(group === 'sim' ? `sim-${id}` : `${group}-${id}`);
+    if (targetEl) targetEl.classList.add('active');
+  }
+};
+
+// =====賃上げシミュレーション =====
+function calcRaise() {
+  const arari   = +(document.getElementById('raise_arari')?.value  || 400);
+  const target  = +(document.getElementById('raise_target')?.value || 12);
+  const profit  = +(document.getElementById('raise_profit')?.value || 2000);
+  const rate    = +(document.getElementById('raise_rate')?.value   || 10) / 100;
+  const emp     = +(document.getElementById('raise_emp')?.value    || 17);
+
+  const grossProfit = arari * target;   // 万円
+  const raisePool   = profit * rate;    // 万円/年
+  const perPersonMo = emp > 0 ? Math.round(raisePool * 10000 / emp / 12) : 0; // 円/月
+
+  // 配分係数: S=2.0, A=1.5, B=1.0, C=0.5, D=0
+  // 評価分布(仮定): S10%, A20%, B40%, C20%, D10%
+  const configs = [
+    { rank:'S評価', coef:2.0, dist:10, bg:'#fef3c7', fg:'#92400e' },
+    { rank:'A評価', coef:1.5, dist:20, bg:'#d1fae5', fg:'#065f46' },
+    { rank:'B評価', coef:1.0, dist:40, bg:'#dbeafe', fg:'#1d4ed8' },
+    { rank:'C評価', coef:0.5, dist:20, bg:'#f1f5f9', fg:'#475569' },
+    { rank:'D評価', coef:0.0, dist:10, bg:'#fee2e2', fg:'#991b1b' },
+  ];
+  // 加重平均係数
+  const weightedAvg = configs.reduce((s,c) => s + c.coef * (c.dist/100), 0);
+  const unit = weightedAvg > 0 ? perPersonMo / weightedAvg : 0;
+
+  const rows = configs.map(c => {
+    const monthly = Math.round(unit * c.coef);
+    const annual  = monthly * 12;
+    const persons = Math.round(emp * c.dist / 100);
+    return `<tr>
+      <td><span class="grade-pill" style="background:${c.bg};color:${c.fg};">${c.rank}</span></td>
+      <td style="text-align:center;">${c.coef.toFixed(1)}</td>
+      <td style="text-align:center;">${persons}名</td>
+      <td style="text-align:right;font-weight:600;">${monthly.toLocaleString()}円</td>
+      <td style="text-align:right;">${annual.toLocaleString()}円</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('raise-result').innerHTML = `
+    <div class="sim-kpi" style="margin-bottom:16px;">
+      <div class="sim-kpi-card"><div class="val">${grossProfit.toLocaleString()}<small style="font-size:13px;">万円</small></div><div class="lbl">粗利合計（来期）</div></div>
+      <div class="sim-kpi-card"><div class="val">${raisePool.toFixed(0)}<small style="font-size:13px;">万円</small></div><div class="lbl">賃上げ原資/年</div></div>
+      <div class="sim-kpi-card"><div class="val">${perPersonMo.toLocaleString()}<small style="font-size:11px;">円/月</small></div><div class="lbl">1人平均昇給額（B評価基準）</div></div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>評価ランク</th><th style="text-align:center;">配分係数</th><th style="text-align:center;">想定人数</th><th style="text-align:right;">月額昇給</th><th style="text-align:right;">年間昇給</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="text-muted" style="margin-top:10px;">配分係数：S=2.0 / A=1.5 / B=1.0 / C=0.5 / D=0　｜　評価分布仮定：S10% A20% B40% C20% D10%</div>`;
+}
+
+init();
+renderTimeline();
+calcRaise();
+</script>
+</body>
+</html>
