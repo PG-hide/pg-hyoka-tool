@@ -247,6 +247,8 @@
     <a onclick="nav('process')" id="nav-process"><span class="icon">📅</span>STEP 7: 評価プロセス</a>
     <div class="section-label">活用ツール</div>
     <a onclick="nav('sim')" id="nav-sim"><span class="icon">🧮</span>給与シミュレーション</a>
+    <a onclick="nav('hyoka-sim')" id="nav-hyoka-sim"><span class="icon">📝</span>個人評価シミュレーター</a>
+    <a onclick="nav('hyoka-design')" id="nav-hyoka-design"><span class="icon">🏗️</span>評価制度ビジュアル</a>
     <a onclick="nav('roadmap')" id="nav-roadmap"><span class="icon">🗺️</span>導入ロードマップ</a>
     <a onclick="nav('feedback')" id="nav-feedback"><span class="icon">💬</span>面談設計</a>
   </nav>
@@ -835,6 +837,267 @@
       </div>
     </div>
 
+    <!-- ===== SECTION: 個人評価シミュレーター ===== -->
+    <div class="section" id="sec-hyoka-sim">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 個人評価シミュレーター <span class="badge">鈴正モデル</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="resetHyokaSim()">リセット</button>
+        </div>
+        <div class="info-box">最終スコア ＝ <b>利益達成係数 × 定量点（80点）＋ 定性点（20点）</b>　｜　経常利益目標：2,000万円</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+
+          <!-- 会社業績 -->
+          <div style="padding:16px;border:1px solid var(--border);border-radius:10px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:var(--muted);">【会社業績】</div>
+            <div class="form-group">
+              <label>経常利益（万円）</label>
+              <input type="number" id="hs-profit" value="2000" oninput="calcHyoka()" style="font-size:16px;font-weight:700;">
+            </div>
+            <div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:6px;font-size:13px;">
+              達成率: <b id="hs-rate">100%</b><br>
+              利益達成係数: <b id="hs-coeff" style="color:var(--accent);font-size:16px;">1.0</b>
+            </div>
+          </div>
+
+          <!-- 部署選択 -->
+          <div style="padding:16px;border:1px solid var(--border);border-radius:10px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:var(--muted);">【対象者・部署】</div>
+            <div class="form-group">
+              <label>氏名</label>
+              <input type="text" id="hs-name" value="" placeholder="例：橋本 勉">
+            </div>
+            <div class="form-group" style="margin-top:8px;">
+              <label>部署</label>
+              <select id="hs-dept" onchange="updateDeptItems()">
+                <option value="komu">工務部</option>
+                <option value="sekkei">設計部</option>
+                <option value="somu">総務・経理</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 結果表示 -->
+          <div id="hs-result-card" style="padding:16px;background:var(--primary);border-radius:10px;color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
+            <div style="font-size:12px;color:#94a3b8;">最終スコア</div>
+            <div id="hs-final-score" style="font-size:48px;font-weight:700;line-height:1;">0</div>
+            <div style="font-size:12px;color:#94a3b8;">点</div>
+            <div id="hs-rank-badge" style="font-size:22px;font-weight:700;padding:6px 20px;border-radius:20px;background:#ef4444;color:#fff;margin-top:4px;">D</div>
+            <div id="hs-coeff-badge" style="font-size:12px;color:#94a3b8;">配分係数: <b id="hs-dist-coeff" style="color:#fff;">0</b></div>
+          </div>
+
+        </div>
+
+        <!-- 定量評価 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+          <div>
+            <div style="font-weight:700;font-size:13px;margin-bottom:12px;">【定量評価】80点満点</div>
+            <div id="hs-quant-items"></div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:6px;margin-top:8px;font-weight:700;font-size:13px;">
+              定量合計: <span id="hs-quant-total" style="color:var(--accent);font-size:16px;">0</span> / 80点
+              　×　係数<span id="hs-coeff-inline">1.0</span>　＝　<span id="hs-quant-adjusted" style="color:var(--accent2);">0.0</span>点
+            </div>
+          </div>
+
+          <!-- 定性評価 -->
+          <div>
+            <div style="font-weight:700;font-size:13px;margin-bottom:12px;">【定性評価】20点満点（全社共通）</div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label>① 地域貢献 <span style="float:right;color:var(--muted);">/10点</span></label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="range" id="hs-s1" min="0" max="10" value="5" oninput="document.getElementById('hs-s1v').textContent=this.value;calcHyoka();" style="flex:1;accent-color:var(--accent);">
+                <span id="hs-s1v" style="font-weight:700;width:24px;text-align:right;">5</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">5点=地域活動積極参加 / 3点=参加・受け身 / 0〜1点=ほぼ関わりなし</div>
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label>② 業務姿勢・主体性 <span style="float:right;color:var(--muted);">/5点</span></label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="range" id="hs-s2" min="0" max="5" value="3" oninput="document.getElementById('hs-s2v').textContent=this.value;calcHyoka();" style="flex:1;accent-color:var(--accent);">
+                <span id="hs-s2v" style="font-weight:700;width:24px;text-align:right;">3</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">5点=自走・改善提案 / 3点=指示あれば確実 / 1点=指示待ち</div>
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label>③ チーム貢献・コミュニケーション <span style="float:right;color:var(--muted);">/5点</span></label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="range" id="hs-s3" min="0" max="5" value="3" oninput="document.getElementById('hs-s3v').textContent=this.value;calcHyoka();" style="flex:1;accent-color:var(--accent);">
+                <span id="hs-s3v" style="font-weight:700;width:24px;text-align:right;">3</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">5点=情報共有・後輩フォロー自然 / 3点=基本的協調 / 0〜1点=情報抱え込み</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:6px;font-weight:700;font-size:13px;">
+              定性合計: <span id="hs-qual-total" style="color:var(--accent);font-size:16px;">11</span> / 20点
+            </div>
+          </div>
+        </div>
+
+        <!-- 昇給額計算 -->
+        <div id="hs-raise-area" style="padding:16px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:12px;">💴 賃上げシミュレーション（このランクの場合）</div>
+          <div class="form-group" style="display:inline-block;min-width:200px;">
+            <label>現在の基本給（円/月）</label>
+            <input type="number" id="hs-current-salary" value="270000" oninput="calcHyoka()">
+          </div>
+          <div class="sim-kpi" style="margin-top:12px;">
+            <div class="sim-kpi-card"><div class="val" id="hs-raise-mo">-</div><div class="lbl">月額昇給</div></div>
+            <div class="sim-kpi-card"><div class="val" id="hs-raise-yr">-</div><div class="lbl">年間昇給額</div></div>
+            <div class="sim-kpi-card"><div class="val" id="hs-raise-pct">-</div><div class="lbl">昇給率</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SECTION: 評価制度ビジュアル ===== -->
+    <div class="section" id="sec-hyoka-design">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏗️ 評価制度ビジュアル <span class="badge">鈴正モデル</span></div>
+        </div>
+        <div class="info-box">鈴正様の評価制度をそのまま可視化。支援先への説明・提案時にそのまま使える。</div>
+
+        <!-- 利益達成係数 -->
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">【１】利益達成係数（会社業績連動）</h3>
+        <table style="margin-bottom:24px;">
+          <thead><tr><th>経常利益達成率</th><th>経常利益（目安）</th><th>係数</th><th>定量点への影響</th></tr></thead>
+          <tbody>
+            <tr style="background:#fee2e2;"><td>70%未満</td><td>〜1,399万円</td><td style="font-weight:700;color:var(--danger);font-size:16px;">0</td><td>定量点がゼロになる</td></tr>
+            <tr style="background:#fef3c7;"><td>70〜79%</td><td>1,400〜1,599万円</td><td style="font-weight:700;color:var(--warn);font-size:16px;">0.8</td><td>定量点が20%カット</td></tr>
+            <tr style="background:#fef9c3;"><td>80〜99%</td><td>1,600〜1,999万円</td><td style="font-weight:700;font-size:16px;">0.9</td><td>定量点が10%カット</td></tr>
+            <tr style="background:#d1fae5;"><td>100〜119%</td><td>2,000〜2,399万円</td><td style="font-weight:700;color:var(--accent2);font-size:16px;">1.0</td><td>定量点そのまま反映</td></tr>
+            <tr style="background:#a7f3d0;"><td>120%以上</td><td>2,400万円〜</td><td style="font-weight:700;color:#059669;font-size:16px;">1.2</td><td>定量点が20%上乗せ</td></tr>
+          </tbody>
+        </table>
+
+        <!-- 定量評価 -->
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">【２】定量評価（部署別・80点）</h3>
+        <div class="tabs" id="dept-tabs">
+          <div class="tab active" onclick="switchTab('dept','komu',this)">工務部</div>
+          <div class="tab" onclick="switchTab('dept','sekkei',this)">設計部</div>
+          <div class="tab" onclick="switchTab('dept','somu',this)">総務・経理</div>
+        </div>
+        <div class="tab-content active" id="dept-komu" style="margin-bottom:24px;">
+          <table>
+            <thead><tr><th>評価指標</th><th>配点</th><th>S水準</th><th>A水準</th><th>B水準</th><th>C水準</th><th>D水準</th></tr></thead>
+            <tbody>
+              <tr><td>担当棟数達成率</td><td><b>35点</b></td><td style="background:#d1fae5;">120%以上</td><td style="background:#dbeafe;">105〜119%</td><td>90〜104%</td><td style="background:#fef3c7;">75〜89%</td><td style="background:#fee2e2;">74%以下</td></tr>
+              <tr><td>工期遵守率</td><td><b>20点</b></td><td style="background:#d1fae5;">100%</td><td style="background:#dbeafe;">95〜99%</td><td>88〜94%</td><td style="background:#fef3c7;">80〜87%</td><td style="background:#fee2e2;">79%以下</td></tr>
+              <tr><td>クレーム・手直し件数</td><td><b>10点</b></td><td style="background:#d1fae5;">0件</td><td style="background:#dbeafe;">1件</td><td>2件</td><td style="background:#fef3c7;">3件</td><td style="background:#fee2e2;">4件以上</td></tr>
+              <tr><td>お客様アンケート</td><td><b>15点</b></td><td style="background:#d1fae5;" colspan="5" style="text-align:center;">基準別途設定</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-content" id="dept-sekkei" style="margin-bottom:24px;">
+          <table>
+            <thead><tr><th>評価指標</th><th>配点</th><th>S水準</th><th>A水準</th><th>B水準</th><th>C水準</th><th>D水準</th></tr></thead>
+            <tbody>
+              <tr><td>設計完了件数達成率</td><td><b>35点</b></td><td style="background:#d1fae5;">120%以上</td><td style="background:#dbeafe;">105〜119%</td><td>90〜104%</td><td style="background:#fef3c7;">75〜89%</td><td style="background:#fee2e2;">74%以下</td></tr>
+              <tr><td>納期遵守率</td><td><b>15点</b></td><td style="background:#d1fae5;">100%</td><td style="background:#dbeafe;">95〜99%</td><td>88〜94%</td><td style="background:#fef3c7;">80〜87%</td><td style="background:#fee2e2;">79%以下</td></tr>
+              <tr><td>手戻り・大幅変更件数</td><td><b>10点</b></td><td style="background:#d1fae5;">0件</td><td style="background:#dbeafe;">1件</td><td>2件</td><td style="background:#fef3c7;">3件</td><td style="background:#fee2e2;">4件以上</td></tr>
+              <tr><td>お客様アンケート</td><td><b>20点</b></td><td style="background:#d1fae5;" colspan="5">基準別途設定</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-content" id="dept-somu" style="margin-bottom:24px;">
+          <table>
+            <thead><tr><th>評価指標</th><th>配点</th><th>S水準</th><th>A水準</th><th>B水準</th><th>C水準</th><th>D水準</th></tr></thead>
+            <tbody>
+              <tr><td>半期MBO達成率</td><td><b>55点</b></td><td style="background:#d1fae5;">120%以上</td><td style="background:#dbeafe;">105〜119%</td><td>90〜104%</td><td style="background:#fef3c7;">75〜89%</td><td style="background:#fee2e2;">74%以下</td></tr>
+              <tr><td>ミス・再処理件数</td><td><b>25点</b></td><td style="background:#d1fae5;">0件</td><td style="background:#dbeafe;">1件</td><td>2件</td><td style="background:#fef3c7;">3件</td><td style="background:#fee2e2;">4件以上</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 定性評価 -->
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">【３】定性評価（全社共通・20点）</h3>
+        <table style="margin-bottom:24px;">
+          <thead><tr><th>項目</th><th>配点</th><th>5点／S</th><th>3点／B</th><th>0〜1点／D</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>地域貢献</b></td><td>10点</td>
+              <td style="background:#d1fae5;font-size:12px;">地域活動に積極参加し会社の信頼向上に貢献</td>
+              <td style="font-size:12px;">参加はするが受け身</td>
+              <td style="background:#fee2e2;font-size:12px;">関わりがほぼない or 評判を損ねる行動</td>
+            </tr>
+            <tr>
+              <td><b>業務姿勢・主体性</b></td><td>5点</td>
+              <td style="background:#d1fae5;font-size:12px;">自ら考えて動き改善提案・実行まで自走</td>
+              <td style="font-size:12px;">指示があれば確実にやり切る</td>
+              <td style="background:#fee2e2;font-size:12px;">指示しても動きが遅い</td>
+            </tr>
+            <tr>
+              <td><b>チーム貢献・コミュニケーション</b></td><td>5点</td>
+              <td style="background:#d1fae5;font-size:12px;">情報共有が早く後輩・同僚フォローも自然にできている</td>
+              <td style="font-size:12px;">基本的な協調はある</td>
+              <td style="background:#fee2e2;font-size:12px;">情報を抱え込む or 周囲に負荷をかけている</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ランク判定 -->
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">【４】ランク判定（係数1.0時・素点ベース）</h3>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:24px;">
+          <div style="padding:16px;background:#fef3c7;border-radius:10px;text-align:center;border:2px solid #f59e0b;">
+            <div style="font-size:28px;font-weight:700;color:#92400e;">S</div>
+            <div style="font-size:13px;font-weight:700;margin-top:4px;">85点以上</div>
+            <div style="font-size:11px;color:var(--muted);">配分係数 2.0</div>
+            <div style="font-size:11px;color:#059669;font-weight:600;margin-top:4px;">トップ昇給</div>
+          </div>
+          <div style="padding:16px;background:#d1fae5;border-radius:10px;text-align:center;border:2px solid #10b981;">
+            <div style="font-size:28px;font-weight:700;color:#065f46;">A</div>
+            <div style="font-size:13px;font-weight:700;margin-top:4px;">70〜84点</div>
+            <div style="font-size:11px;color:var(--muted);">配分係数 1.5</div>
+            <div style="font-size:11px;color:#059669;font-weight:600;margin-top:4px;">標準以上</div>
+          </div>
+          <div style="padding:16px;background:#dbeafe;border-radius:10px;text-align:center;border:2px solid #2563eb;">
+            <div style="font-size:28px;font-weight:700;color:#1d4ed8;">B</div>
+            <div style="font-size:13px;font-weight:700;margin-top:4px;">55〜69点</div>
+            <div style="font-size:11px;color:var(--muted);">配分係数 1.0</div>
+            <div style="font-size:11px;color:#1d4ed8;font-weight:600;margin-top:4px;">標準昇給</div>
+          </div>
+          <div style="padding:16px;background:#f1f5f9;border-radius:10px;text-align:center;border:2px solid #94a3b8;">
+            <div style="font-size:28px;font-weight:700;color:#475569;">C</div>
+            <div style="font-size:13px;font-weight:700;margin-top:4px;">40〜54点</div>
+            <div style="font-size:11px;color:var(--muted);">配分係数 0.5</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px;">小幅昇給</div>
+          </div>
+          <div style="padding:16px;background:#fee2e2;border-radius:10px;text-align:center;border:2px solid #ef4444;">
+            <div style="font-size:28px;font-weight:700;color:#991b1b;">D</div>
+            <div style="font-size:13px;font-weight:700;margin-top:4px;">39点以下</div>
+            <div style="font-size:11px;color:var(--muted);">配分係数 0</div>
+            <div style="font-size:11px;color:var(--danger);font-weight:600;margin-top:4px;">今期昇給ゼロ</div>
+          </div>
+        </div>
+
+        <!-- メンバー一覧 -->
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">👥 メンバー一覧（令和8年3月・給与明細ベース）</h3>
+        <table>
+          <thead><tr><th>部署</th><th>氏名</th><th>基本給（円/月）</th><th>支給総額（円/月）</th><th>年収（万円）</th></tr></thead>
+          <tbody>
+            <tr><td rowspan="11" style="font-weight:700;color:#0891b2;">工務部</td><td>橋本 勉</td><td style="text-align:right;">389,000</td><td style="text-align:right;">461,476</td><td style="text-align:right;">554</td></tr>
+            <tr><td>上道 明彦</td><td style="text-align:right;">280,000</td><td style="text-align:right;">297,229</td><td style="text-align:right;">357</td></tr>
+            <tr><td>吉田 唯男</td><td style="text-align:right;">193,000</td><td style="text-align:right;">208,800</td><td style="text-align:right;">251</td></tr>
+            <tr><td>中村 春男</td><td style="text-align:right;">171,000</td><td style="text-align:right;">179,000</td><td style="text-align:right;">215</td></tr>
+            <tr><td>山口 和幸</td><td style="text-align:right;">325,000</td><td style="text-align:right;">496,964</td><td style="text-align:right;">596</td></tr>
+            <tr><td>米田 好仁</td><td style="text-align:right;">325,000</td><td style="text-align:right;">567,774</td><td style="text-align:right;">681</td></tr>
+            <tr><td>高橋 遼太</td><td style="text-align:right;">290,000</td><td style="text-align:right;">314,000</td><td style="text-align:right;">377</td></tr>
+            <tr><td>菊池 竜司</td><td style="text-align:right;">315,000</td><td style="text-align:right;">249,724</td><td style="text-align:right;">300</td></tr>
+            <tr><td>川村 菜菜</td><td style="text-align:right;">201,000</td><td style="text-align:right;">339,584</td><td style="text-align:right;">408</td></tr>
+            <tr><td>中村 拓人</td><td style="text-align:right;">215,000</td><td style="text-align:right;">241,299</td><td style="text-align:right;">290</td></tr>
+            <tr><td>田家 玲葉</td><td style="text-align:right;">189,000</td><td style="text-align:right;">172,815</td><td style="text-align:right;">207</td></tr>
+            <tr><td rowspan="3" style="font-weight:700;color:#7c3aed;">設計部</td><td>小澤 久義</td><td style="text-align:right;">325,000</td><td style="text-align:right;">357,787</td><td style="text-align:right;">429</td></tr>
+            <tr><td>中村 つぐみ</td><td style="text-align:right;">241,000</td><td style="text-align:right;">304,522</td><td style="text-align:right;">365</td></tr>
+            <tr><td>佐々木 大介</td><td style="text-align:right;">190,000</td><td style="text-align:right;">195,430</td><td style="text-align:right;">235</td></tr>
+            <tr><td style="font-weight:700;color:#059669;">総務部</td><td>西海枝 貢</td><td style="text-align:right;">280,000</td><td style="text-align:right;">295,800</td><td style="text-align:right;">355</td></tr>
+            <tr><td rowspan="2" style="font-weight:700;color:#dc2626;">経理部</td><td>三上 和美</td><td style="text-align:right;">225,000</td><td style="text-align:right;">294,437</td><td style="text-align:right;">353</td></tr>
+            <tr><td>佐藤 綾香</td><td style="text-align:right;">180,000</td><td style="text-align:right;">205,525</td><td style="text-align:right;">247</td></tr>
+            <tr style="font-weight:700;background:#f8fafc;"><td colspan="2">合計（17名）</td><td style="text-align:right;">4,334,000</td><td style="text-align:right;">5,182,166</td><td style="text-align:right;">4,436</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ===== SECTION: ロードマップ ===== -->
     <div class="section" id="sec-roadmap">
       <div class="card">
@@ -1039,7 +1302,8 @@ const navTitles = {
   info:'会社情報', kpi:'STEP 1: KPI設計', grade:'STEP 2: 等級設計',
   axis:'STEP 3: 評価3軸', salary:'STEP 4: 賃金テーブル', incentive:'STEP 5: インセンティブ設計',
   rules:'STEP 6: 昇降格ルール', process:'STEP 7: 評価プロセス',
-  sim:'給与シミュレーション', roadmap:'導入ロードマップ', feedback:'面談設計'
+  sim:'給与シミュレーション', 'hyoka-sim':'個人評価シミュレーター', 'hyoka-design':'評価制度ビジュアル',
+  roadmap:'導入ロードマップ', feedback:'面談設計'
 };
 function nav(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -1432,9 +1696,144 @@ function calcRaise() {
     <div class="text-muted" style="margin-top:10px;">配分係数：S=2.0 / A=1.5 / B=1.0 / C=0.5 / D=0　｜　評価分布仮定：S10% A20% B40% C20% D10%</div>`;
 }
 
+// ===== 個人評価シミュレーター =====
+const deptConfig = {
+  komu: [
+    { label:'担当棟数達成率', max:35 },
+    { label:'工期遵守率',     max:20 },
+    { label:'クレーム・手直し件数', max:10 },
+    { label:'お客様アンケート', max:15 },
+  ],
+  sekkei: [
+    { label:'設計完了件数達成率', max:35 },
+    { label:'納期遵守率',         max:15 },
+    { label:'手戻り・大幅変更件数', max:10 },
+    { label:'お客様アンケート',   max:20 },
+  ],
+  somu: [
+    { label:'半期MBO達成率',   max:55 },
+    { label:'ミス・再処理件数', max:25 },
+  ],
+};
+
+function updateDeptItems() {
+  const dept = document.getElementById('hs-dept').value;
+  const items = deptConfig[dept];
+  const container = document.getElementById('hs-quant-items');
+  container.innerHTML = items.map((item, i) => `
+    <div class="form-group" style="margin-bottom:10px;">
+      <label>${item.label} <span style="float:right;color:var(--muted);">/${item.max}点</span></label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="range" id="hs-q${i}" min="0" max="${item.max}" value="${Math.round(item.max*0.7)}"
+          oninput="document.getElementById('hs-q${i}v').textContent=this.value;calcHyoka();"
+          style="flex:1;accent-color:var(--accent);">
+        <span id="hs-q${i}v" style="font-weight:700;width:24px;text-align:right;">${Math.round(item.max*0.7)}</span>
+      </div>
+    </div>`).join('');
+  calcHyoka();
+}
+
+function getProfitCoeff(profit) {
+  const target = 2000;
+  const rate = profit / target;
+  if (rate < 0.7)  return 0;
+  if (rate < 0.8)  return 0.8;
+  if (rate < 1.0)  return 0.9;
+  if (rate < 1.2)  return 1.0;
+  return 1.2;
+}
+
+function getRank(score) {
+  if (score >= 85) return 'S';
+  if (score >= 70) return 'A';
+  if (score >= 55) return 'B';
+  if (score >= 40) return 'C';
+  return 'D';
+}
+
+const rankColors = { S:'#f59e0b', A:'#10b981', B:'#2563eb', C:'#64748b', D:'#ef4444' };
+const rankCoeff  = { S:2.0, A:1.5, B:1.0, C:0.5, D:0 };
+
+function calcHyoka() {
+  const profit = +(document.getElementById('hs-profit')?.value || 2000);
+  const coeff  = getProfitCoeff(profit);
+  const rate   = profit / 2000;
+
+  document.getElementById('hs-rate').textContent  = Math.round(rate * 100) + '%';
+  document.getElementById('hs-coeff').textContent = coeff.toFixed(1);
+  document.getElementById('hs-coeff-inline').textContent = coeff.toFixed(1);
+
+  // 定量点
+  const dept  = document.getElementById('hs-dept')?.value || 'komu';
+  const items = deptConfig[dept];
+  let quantTotal = 0;
+  items.forEach((_, i) => {
+    const el = document.getElementById(`hs-q${i}`);
+    if (el) quantTotal += +el.value;
+  });
+  const quantAdjusted = coeff * quantTotal;
+
+  // 定性点
+  const s1 = +(document.getElementById('hs-s1')?.value || 5);
+  const s2 = +(document.getElementById('hs-s2')?.value || 3);
+  const s3 = +(document.getElementById('hs-s3')?.value || 3);
+  const qualTotal = s1 + s2 + s3;
+
+  // 最終スコア
+  const finalScore = Math.round((quantAdjusted + qualTotal) * 10) / 10;
+  const rank = getRank(finalScore);
+  const distCoeff = rankCoeff[rank];
+
+  // UI更新
+  document.getElementById('hs-quant-total').textContent    = quantTotal;
+  document.getElementById('hs-quant-adjusted').textContent = quantAdjusted.toFixed(1);
+  document.getElementById('hs-qual-total').textContent     = qualTotal;
+  document.getElementById('hs-final-score').textContent    = finalScore;
+  document.getElementById('hs-rank-badge').textContent     = rank;
+  document.getElementById('hs-rank-badge').style.background = rankColors[rank];
+  document.getElementById('hs-dist-coeff').textContent     = distCoeff;
+
+  // 賃上げ計算（賃上げ原資ベース: B評価=9,804円/月を基準）
+  const baseSalary = +(document.getElementById('hs-current-salary')?.value || 270000);
+  const baseRaise = 9804; // B評価月額昇給（来期12棟時）
+  const monthRaise = Math.round(baseRaise * distCoeff);
+  const yearRaise  = monthRaise * 12;
+  const pct = baseSalary > 0 ? (monthRaise / baseSalary * 100).toFixed(2) : 0;
+
+  document.getElementById('hs-raise-mo').textContent  = monthRaise.toLocaleString() + '円';
+  document.getElementById('hs-raise-yr').textContent  = yearRaise.toLocaleString() + '円';
+  document.getElementById('hs-raise-pct').textContent = pct + '%';
+}
+
+function resetHyokaSim() {
+  document.getElementById('hs-profit').value = 2000;
+  document.getElementById('hs-s1').value = 5;
+  document.getElementById('hs-s2').value = 3;
+  document.getElementById('hs-s3').value = 3;
+  document.getElementById('hs-s1v').textContent = 5;
+  document.getElementById('hs-s2v').textContent = 3;
+  document.getElementById('hs-s3v').textContent = 3;
+  updateDeptItems();
+}
+
+// ===== dept tab fix =====
+const deptTabIds = ['dept-komu','dept-sekkei','dept-somu'];
+const _origSwitchTab2 = window.switchTab;
+window.switchTab = function(group, id, el) {
+  if (group === 'dept') {
+    deptTabIds.forEach(t => document.getElementById(t)?.classList.remove('active'));
+    document.getElementById(`dept-${id}`)?.classList.add('active');
+    el.closest('.card')?.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    return;
+  }
+  _origSwitchTab2(group, id, el);
+};
+
 init();
 renderTimeline();
 calcRaise();
+updateDeptItems();
 </script>
 </body>
 </html>
